@@ -67,23 +67,26 @@ $.widget( "ui.menubar", {
 		items.each(function() {
 			var input = $(this),
 				// TODO menu var is only used on two places, doesn't quite justify the .each
-				menu = input.next( "ul" );
+				menu = input.next( "ul" ),
+                hasChildren = menu.length > 0;
 			
 			input.bind( "click.menubar focus.menubar mouseenter.menubar", function( event ) {
 				// ignore triggered focus event
 				if ( event.type == "focus" && !event.originalEvent ) {
 					return;
 				}
-   				event.preventDefault();
-				// TODO can we simplify or extractthis check? especially the last two expressions
-				// there's a similar active[0] == menu[0] check in _open
-				if ( event.type == "click" && menu.is( ":visible" ) && that.active && that.active[0] == menu[0] ) {
-					that._close();
-					return;
-				}
-				if ( ( that.open && event.type == "mouseenter" ) || event.type == "click" ) {
-					that._open( event, menu );
-				}
+                if (hasChildren) {
+                    event.preventDefault();
+                    // TODO can we simplify or extractthis check? especially the last two expressions
+                    // there's a similar active[0] == menu[0] check in _open
+                    if ( event.type == "click" && menu.is( ":visible" ) && that.active && that.active[0] == menu[0] ) {
+                        that._close();
+                        return;
+                    }
+                    if ( ( that.open && event.type == "mouseenter" ) || event.type == "click" ) {
+                        that._open( event, menu );
+                    }
+                }
    			})
 			.bind( "keydown", function( event ) {
 				switch ( event.keyCode ) {
@@ -109,7 +112,7 @@ $.widget( "ui.menubar", {
 			.wrapInner( "<span class='ui-button-text'></span>" );
 
 			// TODO review if these options are a good choice, maybe they can be merged
-			if ( that.options.menuIcon ) {
+			if ( that.options.menuIcon && hasChildren) {
 				input.addClass( "ui-state-default" ).append( "<span class='ui-button-icon-secondary ui-icon ui-icon-triangle-1-s'></span>" );
 				input.removeClass( "ui-button-text-only" ).addClass( "ui-button-text-icon-secondary" );
 			}
@@ -117,7 +120,7 @@ $.widget( "ui.menubar", {
 			if ( !that.options.buttons ) {
 				// TODO ui-menubar-link is added above, not needed here?
 				input.addClass( "ui-menubar-link" ).removeClass( "ui-state-default" );
-			};			
+			};
 			
 		});
 		that._bind( {
