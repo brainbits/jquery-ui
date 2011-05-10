@@ -40,10 +40,10 @@ $.widget( "ui.menubar", {
 			.menu({
 				select: function( event, ui ) {
 					ui.item.parents( "ul.ui-menu:last" ).hide();
-					that._trigger( "select", event, ui );
-					that._close();
 					// TODO what is this targetting? there's probably a better way to access it
 					$(event.target).prev().focus();
+					that._close();
+					return that._trigger( "select", event, ui );
 				}
 			})
 			.hide()
