@@ -45,13 +45,11 @@ $.widget("ui.menu", {
 				if ( !item.length ) {
 					return;
 				}
-				// temporary
-				event.preventDefault();
 				// it's possible to click an item without hovering it (#7085)
 				if ( !self.active || ( self.active[ 0 ] !== item[ 0 ] ) ) {
 					self.focus( event, item );
 				}
-				self.select( event );
+				return self.select( event );
 			})
 			.bind( "mouseover.menu", function( event ) {
 				if ( self.options.disabled ) {
@@ -417,7 +415,7 @@ $.widget("ui.menu", {
 			item: this.active
 		};
 		this.closeAll();
-		this._trigger( "select", event, ui );
+		return this._trigger( "select", event, ui );
 	}
 });
 
