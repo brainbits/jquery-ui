@@ -1,6 +1,6 @@
 (function( $ ) {
 
-module("tabs (deprecated): core");
+module( "tabs (deprecated): core" );
 
 test( "panel ids", function() {
 	expect( 2 );
@@ -112,39 +112,39 @@ test( "tabTemplate + panelTemplate", function() {
 	ok( element.find( "#new" ).hasClass( "customPanel" ), "panel custom class" );
 });
 
-test('cookie', function() {
-	expect(6);
+test( "cookie", function() {
+	expect( 6 );
 
-	el = $('#tabs1');
-	var cookieName = 'tabs_test', cookieObj = { name: cookieName };
-	$.cookie(cookieName, null); // blank state
-	var cookie = function() {
-		return parseInt($.cookie(cookieName), 10);
-	};
+	var element = $( "#tabs1" ),
+		cookieName = "tabs_test",
+		cookieObj = { name: cookieName };
+	$.cookie( cookieName, null );
+	function cookie() {
+		return parseInt( $.cookie( cookieName ), 10 );
+	}
 
-	el.tabs({ cookie: cookieObj });
-	equals(cookie(), 0, 'initial cookie value');
+	element.tabs({ cookie: cookieObj });
+	equals( cookie(), 0, "initial cookie value" );
 
-	el.tabs('destroy');
-	el.tabs({ active: 1, cookie: cookieObj });
-	equals(cookie(), 1, 'initial cookie value, from active property');
+	element.tabs( "destroy" );
+	element.tabs({ active: 1, cookie: cookieObj });
+	equals( cookie(), 1, "initial cookie value, from active property" );
 
-	el.tabs('option', 'active', 2);
-	equals(cookie(), 2, 'cookie value updated after activating');
+	element.tabs( "option", "active", 2 );
+	equals( cookie(), 2, "cookie value updated after activating" );
 
-	el.tabs('destroy');
-	$.cookie(cookieName, 1);
-	el.tabs({ cookie: cookieObj });
-	equals(cookie(), 1, 'initial cookie value, from existing cookie');
+	element.tabs( "destroy" );
+	$.cookie( cookieName, 1 );
+	element.tabs({ cookie: cookieObj });
+	equals( cookie(), 1, "initial cookie value, from existing cookie" );
 
-	el.tabs('destroy');
-	el.tabs({ cookie: cookieObj, collapsible: true });
-	el.tabs('option', 'active', false);
-	equals(cookie(), -1, 'cookie value for all tabs unselected');
+	element.tabs( "destroy" );
+	element.tabs({ cookie: cookieObj, collapsible: true });
+	element.tabs( "option", "active", false );
+	equals( cookie(), -1, "cookie value for all tabs unselected" );
 
-	el.tabs('destroy');
-	ok($.cookie(cookieName) === null, 'erase cookie after destroy');
-
+	element.tabs( "destroy" );
+	ok( $.cookie( cookieName ) === null, "erase cookie after destroy" );
 });
 
 asyncTest( "spinner", function() {
@@ -251,45 +251,85 @@ test( "disable", function() {
 	element.tabs( "disable", 1 );
 });
 
-test('show', function() {
-	expect(5);
 
-	var uiObj, eventObj;
-	el = $('#tabs1').tabs({
-		show: function(event, ui) {
-			uiObj = ui;
-			eventObj = event;
-		}
+test( "show", function() {
+	expect( 13 );
+
+	var element = $( "#tabs1" ).tabs({
+			active: false,
+			collapsible: true
+		}),
+		tabs = element.find( ".ui-tabs-nav a" ),
+		panels = element.find( ".ui-tabs-panel" );
+
+	// from collapsed
+	element.one( "tabsshow", function( event, ui ) {
+		ok( !( "originalEvent" in event ), "originalEvent" );
+		strictEqual( ui.tab, tabs[ 0 ], "ui.tab" );
+		strictEqual( ui.panel, panels[ 0 ], "ui.panel" );
+		equal( ui.index, 0, "ui.index" );
+		tabs_state( element, 1, 0, 0 );
 	});
-	ok(uiObj !== undefined, 'trigger callback after initialization');
-	equals(uiObj.tab, $('a', el)[0], 'contain tab as DOM anchor element');
-	equals(uiObj.panel, $('div', el)[0], 'contain panel as DOM div element');
-	equals(uiObj.index, 0, 'contain index');
+	element.tabs( "option", "active", 0 );
+	tabs_state( element, 1, 0, 0 );
 
-	el.find( "li:eq(1) a" ).simulate( "click" );
-	equals( eventObj.originalEvent.type, "click", "show triggered by click" );
+	// switching tabs
+	element.one( "tabsshow", function( event, ui ) {
+		equals( event.originalEvent.type, "click", "originalEvent" );
+		strictEqual( ui.tab, tabs[ 1 ], "ui.tab" );
+		strictEqual( ui.panel, panels[ 1 ], "ui.panel" );
+		equal( ui.index, 1, "ui.index" );
+		tabs_state( element, 0, 1, 0 );
+	});
+	tabs.eq( 1 ).click();
+	tabs_state( element, 0, 1, 0 );
 
+	// collapsing
+	element.one( "tabsshow", function( event, ui ) {
+		ok( false, "collapsing" );
+	});
+	element.tabs( "option", "active", false );
+	tabs_state( element, 0, 0, 0 );
 });
 
-test('select', function() {
-	expect(7);
+test( "select", function() {
+	expect( 13 );
 
-	var eventObj;
-	el = $('#tabs1').tabs({
-		select: function(event, ui) {
-			ok(true, 'select triggered after initialization');
-			equals(this, el[0], "context of callback");
-			equals(event.type, 'tabsselect', 'event type in callback');
-			equals(ui.tab, el.find('a')[1], 'contain tab as DOM anchor element');
-			equals(ui.panel, el.find('div')[1], 'contain panel as DOM div element');
-			equals(ui.index, 1, 'contain index');
-			evenObj = event;
-		}
+	var element = $( "#tabs1" ).tabs({
+			active: false,
+			collapsible: true
+		}),
+		tabs = element.find( ".ui-tabs-nav a" ),
+		panels = element.find( ".ui-tabs-panel" );
+
+	// from collapsed
+	element.one( "tabsselect", function( event, ui ) {
+		ok( !( "originalEvent" in event ), "originalEvent" );
+		strictEqual( ui.tab, tabs[ 0 ], "ui.tab" );
+		strictEqual( ui.panel, panels[ 0 ], "ui.panel" );
+		equal( ui.index, 0, "ui.index" );
+		tabs_state( element, 0, 0, 0 );
 	});
-	el.tabs('select', 1);
+	element.tabs( "option", "active", 0 );
+	tabs_state( element, 1, 0, 0 );
 
-	el.find( "li:eq(1) a" ).simulate( "click" );
-	equals( evenObj.originalEvent.type, "click", "select triggered by click" );
+	// switching tabs
+	element.one( "tabsselect", function( event, ui ) {
+		equals( event.originalEvent.type, "click", "originalEvent" );
+		strictEqual( ui.tab, tabs[ 1 ], "ui.tab" );
+		strictEqual( ui.panel, panels[ 1 ], "ui.panel" );
+		equal( ui.index, 1, "ui.index" );
+		tabs_state( element, 1, 0, 0 );
+	});
+	tabs.eq( 1 ).click();
+	tabs_state( element, 0, 1, 0 );
+
+	// collapsing
+	element.one( "tabsselect", function( event, ui ) {
+		ok( false, "collapsing" );
+	});
+	element.tabs( "option", "active", false );
+	tabs_state( element, 0, 0, 0 );
 });
 
 module( "tabs (deprecated): methods" );
