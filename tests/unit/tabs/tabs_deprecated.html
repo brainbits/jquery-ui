@@ -6,7 +6,7 @@
 
 	<link rel="stylesheet" href="../../../themes/base/jquery.ui.tabs.css">
 
-	<script src="../../../jquery-1.5.1.js"></script>
+	<script src="../../jquery.js"></script>
 	<script src="../../../external/jquery.cookie.js"></script>
 	<script src="../../../ui/jquery.ui.core.js"></script>
 	<script src="../../../ui/jquery.ui.widget.js"></script>
@@ -78,16 +78,6 @@
 		}).get();
 		same( tabs.tabs( "option", "disabled" ), state );
 		same( actual, expected );
-	}
-	</script>
-	<script>
-	// disable this stale testsuite for testswarm only
-	var url = window.location.search;
-	url = decodeURIComponent( url.slice( url.indexOf("swarmURL=") + 9 ) );
-	if ( url && url.indexOf("http") == 0 ) {
-		// reset config to kill previous tests; make sure testsuite.js is loaded afterwards to init the testswarm script
-		QUnit.init();
-		test("tabs", function() { ok(true, "disabled tabs testsuite"); });
 	}
 	</script>
 	<script src="../swarminject.js"></script>

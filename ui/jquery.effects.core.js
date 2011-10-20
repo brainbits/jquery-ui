@@ -161,7 +161,7 @@ var classAnimationActions = [ "add", "remove", "toggle" ],
 	// prefix used for storing data on .data()
 	dataSpace = "ec.storage.";
 
-$.each([ "borderLeftStyle", "borderRightStyle", "borderBottomStyle", "borderTopStyle" ], function(_, prop) {
+$.each([ "borderLeftStyle", "borderRightStyle", "borderBottomStyle", "borderTopStyle" ], function( _, prop ) {
 	$.fx.step[ prop ] = function( fx ) {
 		if ( fx.end !== "none" && !fx.setAttr || fx.pos === 1 && !fx.setAttr ) {
 			jQuery.style( fx.elem, prop, fx.end );
@@ -171,8 +171,8 @@ $.each([ "borderLeftStyle", "borderRightStyle", "borderBottomStyle", "borderTopS
 });
 
 function getElementStyles() {
-	var style = document.defaultView
-			? document.defaultView.getComputedStyle(this, null)
+	var style = this.ownerDocument.defaultView
+			? this.ownerDocument.defaultView.getComputedStyle( this, null )
 			: this.currentStyle,
 		newStyle = {},
 		key,
@@ -223,7 +223,7 @@ $.effects.animateClass = function( value, duration, easing, callback ) {
 
 	return this.queue( function() {
 		var animated = $( this ),
-			baseClass = animated.attr( "class" ),
+			baseClass = animated.attr( "class" ) || "",
 			finalClass,
 			allAnimations = o.children ? animated.find( "*" ).andSelf() : animated;
 
@@ -410,9 +410,21 @@ $.extend( $.effects, {
 					border: "none",
 					margin: 0,
 					padding: 0
-				});
+				}),
+			// Store the size in case width/height are defined in % - Fixes #5245
+			size = {
+				width: element.width(),
+				height: element.height()
+			},
+			active = document.activeElement;
 
 		element.wrap( wrapper );
+
+		// Fixes #7595 - Elements lose focus when wrapped.
+		if ( element[ 0 ] === active || $.contains( element[ 0 ], active ) ) {
+			$( active ).focus();
+		}
+
 		wrapper = element.parent(); //Hotfix for jQuery 1.4 since some change in wrap() seems to actually loose the reference to the wrapped element
 
 		// transfer positioning properties to the wrapper
@@ -438,20 +450,31 @@ $.extend( $.effects, {
 				bottom: "auto"
 			});
 		}
+		element.css(size);
 
 		return wrapper.css( props ).show();
 	},
 
 	removeWrapper: function( element ) {
-		if ( element.parent().is( ".ui-effects-wrapper" ) )
-			return element.parent().replaceWith( element );
+		var active = document.activeElement;
+
+		if ( element.parent().is( ".ui-effects-wrapper" ) ) {
+			element.parent().replaceWith( element );
+
+			// Fixes #7595 - Elements lose focus when wrapped.
+			if ( element[ 0 ] === active || $.contains( element[ 0 ], active ) ) {
+				$( active ).focus();
+			}
+		}
+
+
 		return element;
 	},
 
 	setTransition: function( element, list, factor, value ) {
 		value = value || {};
 		$.each( list, function(i, x){
-			unit = element.cssUnit( x );
+			var unit = element.cssUnit( x );
 			if ( unit[ 0 ] > 0 ) value[ x ] = unit[ 0 ] * factor + unit[ 1 ];
 		});
 		return value;
@@ -530,6 +553,7 @@ $.fn.extend({
 	effect: function( effect, options, speed, callback ) {
 		var args = _normalizeArguments.apply( this, arguments ),
 			mode = args.mode,
+			queue = args.queue,
 			effectMethod = $.effects.effect[ args.effect ],
 
 			// DEPRECATED: remove in 2.0 (#7115)
@@ -548,9 +572,32 @@ $.fn.extend({
 			}
 		}
 
+		function run( next ) {
+			var elem = $( this ),
+				complete = args.complete,
+				mode = args.mode;
+
+			function done() {
+				if ( $.isFunction( complete ) ) {
+					complete.call( elem[0] );
+				}
+				if ( $.isFunction( next ) ) {
+					next();
+				}
+			}
+
+			// if the element is hiddden and mode is hide,
+			// or element is visible and mode is show
+			if ( elem.is( ":hidden" ) ? mode === "hide" : mode === "show" ) {
+				done();
+			} else {
+				effectMethod.call( elem[0], args, done );
+			}
+		}
+
 		// TODO: remove this check in 2.0, effectMethod will always be true
 		if ( effectMethod ) {
-			return effectMethod.call( this, args );
+			return queue === false ? this.each( run ) : this.queue( queue || "fx", run );
 		} else {
 			// DEPRECATED: remove in 2.0 (#7115)
 			return oldEffectMethod.call(this, {
