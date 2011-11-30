@@ -36,6 +36,7 @@ var uiDialogClasses = "ui-dialog ui-widget ui-widget-content ui-corner-all ",
 	};
 
 $.widget("ui.dialog", {
+	version: "@VERSION",
 	options: {
 		autoOpen: true,
 		buttons: {},
@@ -107,7 +108,8 @@ $.widget("ui.dialog", {
 				})
 				.mousedown(function( event ) {
 					self.moveToTop( false, event );
-				}),
+				})
+				.appendTo( "body" ),
 
 			uiDialogContent = self.element
 				.show()
@@ -154,8 +156,6 @@ $.widget("ui.dialog", {
 		self._createButtons( options.buttons );
 		self._isOpen = false;
 
-		uiDialog.appendTo( document.body );
-
 		if ( $.fn.bgiframe ) {
 			uiDialog.bgiframe();
 		}
@@ -169,7 +169,7 @@ $.widget("ui.dialog", {
 
 	_destroy: function() {
 		var self = this;
-		
+
 		if ( self.overlay ) {
 			self.overlay.destroy();
 		}
@@ -190,19 +190,23 @@ $.widget("ui.dialog", {
 	},
 
 	close: function( event ) {
+		if ( !this._isOpen ) {
+			return self;
+		}
+
 		var self = this,
 			maxZ, thisZ;
-		
+
 		if ( false === self._trigger( "beforeClose", event ) ) {
 			return;
 		}
+
+		self._isOpen = false;
 
 		if ( self.overlay ) {
 			self.overlay.destroy();
 		}
 		self.uiDialog.unbind( "keypress.ui-dialog" );
-
-		self._isOpen = false;
 
 		if ( self.options.hide ) {
 			self.uiDialog.hide( self.options.hide, function() {
@@ -261,8 +265,8 @@ $.widget("ui.dialog", {
 		// Opera 9.5+ resets when parent z-index is changed.
 		// http://bugs.jqueryui.com/ticket/3193
 		saveScroll = {
-			scrollTop: self.element.attr( "scrollTop" ),
-			scrollLeft: self.element.attr( "scrollLeft" )
+			scrollTop: self.element.scrollTop(),
+			scrollLeft: self.element.scrollLeft()
 		};
 		$.ui.dialog.maxZ += 1;
 		self.uiDialog.css( "z-index", $.ui.dialog.maxZ );
@@ -281,15 +285,15 @@ $.widget("ui.dialog", {
 			options = self.options,
 			uiDialog = self.uiDialog;
 
-		self.overlay = options.modal ? new $.ui.dialog.overlay( self ) : null;
 		self._size();
 		self._position( options.position );
 		uiDialog.show( options.show );
+		self.overlay = options.modal ? new $.ui.dialog.overlay( self ) : null;
 		self.moveToTop( true );
 
 		// prevent tabbing out of modal dialogs
 		if ( options.modal ) {
-			uiDialog.bind( "keypress.ui-dialog", function( event ) {
+			uiDialog.bind( "keydown.ui-dialog", function( event ) {
 				if ( event.keyCode !== $.ui.keyCode.TAB ) {
 					return;
 				}
@@ -368,9 +372,7 @@ $.widget("ui.dialog", {
 
 	_makeDraggable: function() {
 		var self = this,
-			options = self.options,
-			doc = $( document ),
-			heightBeforeDrag;
+			options = self.options;
 
 		function filteredUi( ui ) {
 			return {
@@ -384,9 +386,7 @@ $.widget("ui.dialog", {
 			handle: ".ui-dialog-titlebar",
 			containment: "document",
 			start: function( event, ui ) {
-				heightBeforeDrag = options.height === "auto" ? "auto" : $( this ).height();
 				$( this )
-					.height( $( this ).height() )
 					.addClass( "ui-dialog-dragging" );
 				self._trigger( "dragStart", event, filteredUi( ui ) );
 			},
@@ -395,12 +395,11 @@ $.widget("ui.dialog", {
 			},
 			stop: function( event, ui ) {
 				options.position = [
-					ui.position.left - doc.scrollLeft(),
-					ui.position.top - doc.scrollTop()
+					ui.position.left - self.document.scrollLeft(),
+					ui.position.top - self.document.scrollTop()
 				];
 				$( this )
-					.removeClass( "ui-dialog-dragging" )
-					.height( heightBeforeDrag );
+					.removeClass( "ui-dialog-dragging" );
 				self._trigger( "dragStop", event, filteredUi( ui ) );
 				$.ui.dialog.overlay.resize();
 			}
@@ -494,7 +493,7 @@ $.widget("ui.dialog", {
 					at: myAt.join( " " ),
 					offset: offset.join( " " )
 				};
-			} 
+			}
 
 			position = $.extend( {}, $.ui.dialog.prototype.options.position, position );
 		} else {
@@ -519,7 +518,7 @@ $.widget("ui.dialog", {
 
 		$.each( options, function( key, value ) {
 			self._setOption( key, value );
-			
+
 			if ( key in sizeRelatedOptions ) {
 				resize = true;
 			}
@@ -565,7 +564,7 @@ $.widget("ui.dialog", {
 				if ( isDraggable && !value ) {
 					uiDialog.draggable( "destroy" );
 				}
-				
+
 				if ( !isDraggable && value ) {
 					self._makeDraggable();
 				}
@@ -597,7 +596,7 @@ $.widget("ui.dialog", {
 				break;
 		}
 
-		this._super( "_setOption", key, value );
+		this._super( key, value );
 	},
 
 	_size: function() {
@@ -626,9 +625,9 @@ $.widget("ui.dialog", {
 				height: "auto",
 				width: options.width
 			})
-			.height();
+			.outerHeight();
 		minContentHeight = Math.max( 0, options.minHeight - nonContentHeight );
-		
+
 		if ( options.height === "auto" ) {
 			// only needed for IE6 support
 			if ( $.support.minHeight ) {
@@ -655,8 +654,6 @@ $.widget("ui.dialog", {
 });
 
 $.extend($.ui.dialog, {
-	version: "@VERSION",
-
 	uuid: 0,
 	maxZ: 0,
 
@@ -707,7 +704,7 @@ $.extend( $.ui.dialog.overlay, {
 			$( document ).bind( "keydown.dialog-overlay", function( event ) {
 				if ( dialog.options.closeOnEscape && !event.isDefaultPrevented() && event.keyCode &&
 					event.keyCode === $.ui.keyCode.ESCAPE ) {
-					
+
 					dialog.close( event );
 					event.preventDefault();
 				}
@@ -717,12 +714,11 @@ $.extend( $.ui.dialog.overlay, {
 			$( window ).bind( "resize.dialog-overlay", $.ui.dialog.overlay.resize );
 		}
 
-		var $el = ( this.oldInstances.pop() || $( "<div>" ).addClass( "ui-widget-overlay" ) )
-			.appendTo( document.body )
-			.css({
-				width: this.width(),
-				height: this.height()
-			});
+		var $el = ( this.oldInstances.pop() || $( "<div>" ).addClass( "ui-widget-overlay" ) );
+		$el.appendTo( document.body ).css({
+			width: this.width(),
+			height: this.height()
+		});
 
 		if ( $.fn.bgiframe ) {
 			$el.bgiframe();
@@ -742,7 +738,7 @@ $.extend( $.ui.dialog.overlay, {
 			$( [ document, window ] ).unbind( ".dialog-overlay" );
 		}
 
-		$el.remove();
+		$el.height( 0 ).width( 0 ).remove();
 
 		// adjust the maxZ to allow other modal dialogs to continue to work (see #4309)
 		var maxZ = 0;
@@ -755,8 +751,8 @@ $.extend( $.ui.dialog.overlay, {
 	height: function() {
 		var scrollHeight,
 			offsetHeight;
-		// handle IE 6
-		if ( $.browser.msie && $.browser.version < 7 ) {
+		// handle IE
+		if ( $.browser.msie ) {
 			scrollHeight = Math.max(
 				document.documentElement.scrollHeight,
 				document.body.scrollHeight
@@ -780,8 +776,8 @@ $.extend( $.ui.dialog.overlay, {
 	width: function() {
 		var scrollWidth,
 			offsetWidth;
-		// handle IE 6
-		if ( $.browser.msie && $.browser.version < 7 ) {
+		// handle IE
+		if ( $.browser.msie ) {
 			scrollWidth = Math.max(
 				document.documentElement.scrollWidth,
 				document.body.scrollWidth

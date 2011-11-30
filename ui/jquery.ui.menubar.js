@@ -18,10 +18,16 @@
 // TODO when mixing clicking menus and keyboard navigation, focus handling is broken
 // there has to be just one item that has tabindex
 $.widget( "ui.menubar", {
-   options: {
-      buttons: false,
-      menuIcon: false
-   },
+	version: "@VERSION",
+	options: {
+		autoExpand: false,
+		buttons: false,
+		menuIcon: false,
+		position: {
+			my: "left top",
+			at: "left bottom"
+		}
+	},
 	_create: function() {
 		var that = this;
 		var items = this.items = this.element.children( "li" )
@@ -38,17 +44,22 @@ $.widget( "ui.menubar", {
 		this._hoverable( items );
 		items.next( "ul" )
 			.menu({
+				position: {
+					within: this.options.position.within
+				},
 				select: function( event, ui ) {
 					ui.item.parents( "ul.ui-menu:last" ).hide();
-					that._trigger( "select", event, ui );
 					that._close();
 					// TODO what is this targetting? there's probably a better way to access it
 					$(event.target).prev().focus();
+					that._trigger( "select", event, ui );
 				}
 			})
 			.hide()
-			.attr( "aria-hidden", "true" )
-			.attr( "aria-expanded", "false" )
+			.attr({
+				"aria-hidden": "true",
+				"aria-expanded": "false"
+			})
 			.bind( "keydown.menubar", function( event ) {
 				var menu = $( this );
 				if ( menu.is( ":hidden" ) )
@@ -67,27 +78,28 @@ $.widget( "ui.menubar", {
 		items.each(function() {
 			var input = $(this),
 				// TODO menu var is only used on two places, doesn't quite justify the .each
-				menu = input.next( "ul" ),
-                hasChildren = menu.length > 0;
-			
+				menu = input.next( "ul" );
+
 			input.bind( "click.menubar focus.menubar mouseenter.menubar", function( event ) {
 				// ignore triggered focus event
 				if ( event.type == "focus" && !event.originalEvent ) {
 					return;
 				}
-                if (hasChildren) {
-                    event.preventDefault();
-                    // TODO can we simplify or extractthis check? especially the last two expressions
-                    // there's a similar active[0] == menu[0] check in _open
-                    if ( event.type == "click" && menu.is( ":visible" ) && that.active && that.active[0] == menu[0] ) {
-                        that._close();
-                        return;
-                    }
-                    if ( ( that.open && event.type == "mouseenter" ) || event.type == "click" ) {
-                        that._open( event, menu );
-                    }
-                }
-   			})
+				event.preventDefault();
+				// TODO can we simplify or extractthis check? especially the last two expressions
+				// there's a similar active[0] == menu[0] check in _open
+				if ( event.type == "click" && menu.is( ":visible" ) && that.active && that.active[0] == menu[0] ) {
+					that._close();
+					return;
+				}
+				if ( ( that.open && event.type == "mouseenter" ) || event.type == "click" || that.options.autoExpand ) {
+					if( that.options.autoExpand ) {
+						clearTimeout( that.closeTimer );
+					}
+
+					that._open( event, menu );
+				}
+			})
 			.bind( "keydown", function( event ) {
 				switch ( event.keyCode ) {
 				case $.ui.keyCode.SPACE:
@@ -116,7 +128,7 @@ $.widget( "ui.menubar", {
 				input.addClass( "ui-state-default" ).append( "<span class='ui-button-icon-secondary ui-icon ui-icon-triangle-1-s'></span>" );
 				input.removeClass( "ui-button-text-only" ).addClass( "ui-button-text-icon-secondary" );
 			}
-   			
+
 			if ( !that.options.buttons ) {
 				// TODO ui-menubar-link is added above, not needed here?
 				input.addClass( "ui-menubar-link" ).removeClass( "ui-state-default" );
@@ -125,7 +137,7 @@ $.widget( "ui.menubar", {
 		});
 		that._bind( {
 			keydown: function( event ) {
-				if ( event.keyCode == $.ui.keyCode.ESCAPE && that.active && that.active.menu( "left", event ) !== true ) {
+				if ( event.keyCode == $.ui.keyCode.ESCAPE && that.active && that.active.menu( "collapse", event ) !== true ) {
 					var active = that.active;
 					that.active.blur();
 					that._close( event );
@@ -138,27 +150,37 @@ $.widget( "ui.menubar", {
 			focusout: function( event ) {
 				that.closeTimer = setTimeout( function() {
 					that._close( event );
-				}, 100);
+				}, 150);
+			},
+			"mouseleave .ui-menubar-item": function( event ) {
+				if ( that.options.autoExpand ) {
+					that.closeTimer = setTimeout( function() {
+						that._close( event );
+					}, 150);
+				}
+			},
+			"mouseenter .ui-menubar-item": function( event ) {
+				clearTimeout( that.closeTimer );
 			}
 		});
 	},
-	
+
 	_destroy : function() {
 		var items = this.element.children( "li" )
 			.removeClass( "ui-menubar-item" )
-			.removeAttr( "role", "presentation" )
+			.removeAttr( "role" )
 			.children( "button, a" );
-		
+
 		this.element
 			.removeClass( "ui-menubar ui-widget-header ui-helper-clearfix" )
-			.removeAttr( "role", "menubar" )
+			.removeAttr( "role" )
 			.unbind( ".menubar" );
-		
+
 		items
 			.unbind( ".menubar" )
 			.removeClass( "ui-button ui-widget ui-button-text-only ui-menubar-link ui-state-default" )
-			.removeAttr( "role", "menuitem" )
-			.removeAttr( "aria-haspopup", "true" )
+			.removeAttr( "role" )
+			.removeAttr( "aria-haspopup" )
 			// TODO unwrap?
 			.children( "span.ui-button-text" ).each(function( i, e ) {
 				var item = $( this );
@@ -170,20 +192,22 @@ $.widget( "ui.menubar", {
 		this.element.find( ":ui-menu" )
 			.menu( "destroy" )
 			.show()
-			.removeAttr( "aria-hidden", "true" )
-			.removeAttr( "aria-expanded", "false" )
+			.removeAttr( "aria-hidden" )
+			.removeAttr( "aria-expanded" )
 			.removeAttr( "tabindex" )
 			.unbind( ".menubar" );
 	},
-	
+
 	_close: function() {
 		if ( !this.active || !this.active.length )
 			return;
 		this.active
-			.menu( "closeAll" )
+			.menu( "collapseAll" )
 			.hide()
-			.attr( "aria-hidden", "true" )
-			.attr( "aria-expanded", "false" );
+			.attr({
+				"aria-hidden": "true",
+				"aria-expanded": "false"
+			});
 		this.active
 			.prev()
 			.removeClass( "ui-state-active" )
@@ -191,7 +215,7 @@ $.widget( "ui.menubar", {
 		this.active = null;
 		this.open = false;
 	},
-	
+
 	_open: function( event, menu ) {
 		// on a single-button menubar, ignore reopening the same menu
 		if ( this.active && this.active[0] == menu[0] ) {
@@ -200,10 +224,12 @@ $.widget( "ui.menubar", {
 		// TODO refactor, almost the same as _close above, but don't remove tabIndex
 		if ( this.active ) {
 			this.active
-				.menu( "closeAll" )
+				.menu( "collapseAll" )
 				.hide()
-				.attr( "aria-hidden", "true" )
-				.attr( "aria-expanded", "false" );
+				.attr({
+					"aria-hidden": "true",
+					"aria-expanded": "false"
+				});
 			this.active
 				.prev()
 				.removeClass( "ui-state-active" );
@@ -212,11 +238,9 @@ $.widget( "ui.menubar", {
 		var button = menu.prev().addClass( "ui-state-active" ).attr( "tabIndex", -1 );
 		this.active = menu
 			.show()
-			.position( {
-				my: "left top",
-				at: "left bottom",
+			.position( $.extend({
 				of: button
-			})
+			}, this.options.position ) )
 			.removeAttr( "aria-hidden" )
 			.attr( "aria-expanded", "true" )
 			.menu("focus", event, menu.children( "li" ).first() )
@@ -225,7 +249,7 @@ $.widget( "ui.menubar", {
 			.focusin();
 		this.open = true;
 	},
-	
+
 	// TODO refactor this and the next three methods
 	_prev: function( event, button ) {
 		button.attr( "tabIndex", -1 );
@@ -237,7 +261,7 @@ $.widget( "ui.menubar", {
 			lastItem.removeAttr( "tabIndex" )[0].focus();
 		}
 	},
-	
+
 	_next: function( event, button ) {
 		button.attr( "tabIndex", -1 );
 		var next = button.parent().nextAll( "li" ).children( ".ui-button" ).eq( 0 );
@@ -259,7 +283,7 @@ $.widget( "ui.menubar", {
 			this._open( event, lastItem );
 		}
 	},
-	
+
 	// TODO rename to child (or something like that)
 	_right: function( event ) {
 		var next = this.active.parent().nextAll( "li:eq(0)" ).children( ".ui-menu" ).eq( 0 );
